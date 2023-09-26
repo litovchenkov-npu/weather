@@ -1,0 +1,56 @@
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+API_KEY = "API_KEY"
+
+class Model:
+    def get_weather_data(self, city):
+        try:
+            url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric'
+            response = requests.get(url)
+
+            if response.status_code == 200:
+                weather_data = response.json()
+                return weather_data
+            else:
+                return {"error": f"Помилка під час отримання даних про погоду. Код стану: {response.status_code}"}
+        except Exception as e:
+            return {"error": f"Трапилася помилка: {e}"}
+
+    def get_weekly_forecast(self, city):
+        try:
+            url = f'http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric'
+            response = requests.get(url)
+
+            if response.status_code == 200:
+                forecast_data = response.json()
+                return forecast_data
+            else:
+                return {"error": f"Помилка під час отримання даних про погоду. Код стану: {response.status_code}"}
+        except Exception as e:
+            return {"error": f"Виникла помилка: {e}"}
+
+model = Model()
+
+@app.route('/get_weather', methods=['GET'])
+def get_weather():
+    city = request.args.get('city')
+    if city:
+        weather_data = model.get_weather_data(city)
+        return jsonify(weather_data)
+    else:
+        return jsonify({"error": "Будь ласка, введіть назву міста"})
+
+@app.route('/get_weekly_forecast', methods=['GET'])
+def get_weekly_forecast():
+    city = request.args.get('city')
+    if city:
+        weekly_forecast_data = model.get_weekly_forecast(city)
+        return jsonify(weekly_forecast_data)
+    else:
+        return jsonify({"error": "Будь ласка, введіть назву міста"})
+
+if __name__ == '__main__':
+    app.run(debug=True)
