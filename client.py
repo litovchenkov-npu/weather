@@ -3,49 +3,97 @@ import tkinter.messagebox as messagebox
 from tkinter import ttk
 import requests
 
-class View:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Погода")
-        self.root.geometry("600x400")
+# Клас WeatherServiceFacade використовується для спрощення взаємодії з веб-сервісом погоди.
+class WeatherServiceFacade:
+    def __init__(self, base_url):
+        self.base_url = base_url
 
+    # Приватний метод для відправки запиту до веб-сервісу.
+    def _make_request(self, endpoint, city):
+        try:
+            url = f'{self.base_url}/{endpoint}?city={city}'
+            response = requests.get(url)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                return {"error": "Помилка під час отримання даних про погоду."}
+        except Exception as e:
+            return {"error": f"Виникла помилка: {e}"}
+
+    # Метод для отримання поточної погоди для вказаного міста.
+    def get_weather(self, city):
+        return self._make_request("get_weather", city)
+
+    # Метод для отримання тижневого прогнозу погоди для вказаного міста.
+    def get_weekly_forecast(self, city):
+        return self._make_request("get_weekly_forecast", city)
+
+# Клас View відповідає за створення графічного інтерфейсу користувача.
+class View:
+    def __init__(self, root, weather_service):
+        self.root = root
+        self.weather_service = weather_service
+        self.root.title("Погода")  # Назва вікна
+        self.root.geometry("600x400")  # Розмір вікна
+
+        self._center_window()  # Центрує вікно на екрані.
+
+        # Створення і розміщення елементів GUI:
+        self.label = self._create_label("Введіть назву міста:")
+        self.entry = self._create_entry()
+        self.get_weather_button = self._create_button("Отримати прогноз погоди", self.get_weather)
+        self.result_label = self._create_label("")
+        self.tree = self._create_treeview()
+
+    # Метод для центрування вікна на екрані.
+    def _center_window(self):
         window_width = 600
         window_height = 400
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
-        root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
 
-        self.label = tk.Label(root, text="Введіть назву міста:")
-        self.label.pack(pady=10)
+    # Метод для створення текстового напису на GUI.
+    def _create_label(self, text):
+        label = tk.Label(self.root, text=text)
+        label.pack(pady=10)
+        return label
 
-        self.entry = tk.Entry(root)
-        self.entry.pack()
+    # Метод для створення поля для введення тексту на GUI.
+    def _create_entry(self):
+        entry = tk.Entry(self.root)
+        entry.pack()
+        return entry
 
-        self.get_weather_button = tk.Button(root, text="Отримати прогноз погоди", command=self.get_weather)
-        self.get_weather_button.pack(pady=10)
+    # Метод для створення кнопки на GUI.
+    def _create_button(self, text, command):
+        button = tk.Button(self.root, text=text, command=command)
+        button.pack(pady=10)
+        return button
 
-        self.result_label = tk.Label(root, text="")
-        self.result_label.pack()
+    # Метод для створення таблиці (Treeview) на GUI.
+    def _create_treeview(self):
+        tree = ttk.Treeview(self.root, columns=("Дата і час", "Температура (°C)", "Опис"), show="headings")
+        tree.heading("#1", text="Дата і час")
+        tree.heading("#2", text="Температура (°C)")
+        tree.heading("#3", text="Опис")
+        tree.pack(pady=10)
+        return tree
 
-        self.tree = ttk.Treeview(root, columns=("Дата і час", "Температура (°C)", "Опис"), show="headings")
-        self.tree.heading("#1", text="Дата і час")
-        self.tree.heading("#2", text="Температура (°C)")
-        self.tree.heading("#3", text="Опис")
-        self.tree.pack(pady=10)
-
+    # Метод, який викликається при натисканні кнопки "Отримати прогноз погоди".
     def get_weather(self):
         city = self.entry.get()
         if city:
-            weather_data = self.fetch_weather_data(city)
+            weather_data = self.weather_service.get_weather(city)
             if "error" in weather_data:
                 messagebox.showerror("Помилка", weather_data["error"])
             else:
                 temperature = weather_data['main']['temp']
                 description = weather_data['weather'][0]['description']
                 self.result_label.config(text=f"Поточна температура: {temperature}°C, {description}")
-                weekly_forecast_data = self.fetch_weekly_forecast_data(city)
+                weekly_forecast_data = self.weather_service.get_weekly_forecast(city)
                 if "error" in weekly_forecast_data:
                     messagebox.showerror("Помилка", weekly_forecast_data["error"])
                 else:
@@ -62,30 +110,7 @@ class View:
         else:
             messagebox.showwarning("Попередження", "Будь ласка, введіть назву міста")
 
-    def fetch_weather_data(self, city):
-        try:
-            url = f'http://localhost:5000/get_weather?city={city}'
-            response = requests.get(url)
-            if response.status_code == 200:
-                weather_data = response.json()
-                return weather_data
-            else:
-                return {"error": "Помилка під час отримання даних про погоду."}
-        except Exception as e:
-            return {"error": f"Виникла помилка: {e}"}
-
-    def fetch_weekly_forecast_data(self, city):
-        try:
-            url = f'http://localhost:5000/get_weekly_forecast?city={city}'
-            response = requests.get(url)
-            if response.status_code == 200:
-                forecast_data = response.json()
-                return forecast_data
-            else:
-                return {"error": "Помилка під час отримання даних про погоду."}
-        except Exception as e:
-            return {"error": f"Виникла помилка: {e}"}
-
+    # Метод для відображення тижневого прогнозу погоди в таблиці.
     def display_weekly_forecast(self, weekly_forecast_data):
         self.tree.delete(*self.tree.get_children())
         for date, data in weekly_forecast_data.items():
@@ -94,7 +119,9 @@ class View:
             description = data['description']
             self.tree.insert("", "end", values=(date_time, temperature, description))
 
+# Головна частина програми:
 if __name__ == "__main__":
     root = tk.Tk()
-    view = View(root)
-    root.mainloop()
+    weather_service = WeatherServiceFacade("http://localhost:5000")  # Ініціалізація WeatherServiceFacade
+    view = View(root, weather_service)  # Створення графічного інтерфейсу
+    root.mainloop()  # Запуск головного цикла GUI

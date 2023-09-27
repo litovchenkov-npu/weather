@@ -3,9 +3,11 @@ import requests
 
 app = Flask(__name__)
 
-API_KEY = "API_KEY"
+API_KEY = "API_KEY" # API ключ OpenWeatherMap
 
+# Клас Model відповідає за взаємодію з API для отримання погодових даних.
 class Model:
+    # Метод для отримання поточних погодових даних для вказаного міста.
     def get_weather_data(self, city):
         try:
             url = f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={API_KEY}&units=metric'
@@ -19,6 +21,7 @@ class Model:
         except Exception as e:
             return {"error": f"Трапилася помилка: {e}"}
 
+    # Метод для отримання тижневого прогнозу погоди для вказаного міста.
     def get_weekly_forecast(self, city):
         try:
             url = f'http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={API_KEY}&units=metric'
@@ -34,6 +37,7 @@ class Model:
 
 model = Model()
 
+# Маршрут для отримання поточних погодових даних через HTTP GET-запит.
 @app.route('/get_weather', methods=['GET'])
 def get_weather():
     city = request.args.get('city')
@@ -43,6 +47,7 @@ def get_weather():
     else:
         return jsonify({"error": "Будь ласка, введіть назву міста"})
 
+# Маршрут для отримання тижневого прогнозу погоди через HTTP GET-запит.
 @app.route('/get_weekly_forecast', methods=['GET'])
 def get_weekly_forecast():
     city = request.args.get('city')
